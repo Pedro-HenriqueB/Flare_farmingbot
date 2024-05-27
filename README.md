@@ -81,7 +81,8 @@ Loop - 0x89BA94 call 0x89B180
 All of these instructions are close to instructions we identified when reversing in the previous section of this lesson.
 
 First, we will begin the DLL structure we have seen in previous lessons:
-<code>
+
+```
 #include <Windows.h>
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
@@ -93,9 +94,11 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
 
   return true;
 }
-</code>
+```
+
 Then, identically to how we have created hooks in previous lessons, we will hook the 3 instructions identified above:
-<code>
+
+```
 HANDLE flare_base;
 
 DWORD mouse_call_address;
@@ -141,14 +144,16 @@ if (fdwReason == DLL_PROCESS_ATTACH) {
   VirtualProtect((void*)hook_location, 5, PAGE_EXECUTE_READWRITE, &old_protect);
   *hook_location = 0xE9;
   *(DWORD*)(hook_location + 1) = (DWORD)&loop_codecave - ((DWORD)hook_location + 5);
-</code>
+```
+
 To wrap up our DllMain function, we also want to create our thread:
 
 CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)injected_thread, NULL, 0, NULL);
 
 ### Mouse Code Cave
 When our mouse code cave executes, ebp+0x664 holds the cursor’s X position and ebp+0x668 holds the cursor’s Y position. Our code cave will retrieve these values and assign two pointers to their location, mouse_x and mouse_y:
-<code>
+
+```
 DWORD* mouse_x = NULL;
 DWORD* mouse_y = NULL;
 
@@ -166,10 +171,12 @@ __declspec(naked) void mouse_codecave() {
     jmp mouse_return_address
   }
 }
-</code>
+```
+
 ### Player Code Cave
 In a similar manner to our mouse code cave, when our player code cave executes, ecx+0x240 holds the player’s X position and ecx+0x244 holds the player’s Y position. Our code cave will retrieve these values and assign two pointers to their location:
-<code>
+
+```
 float* player_x = NULL;
 float* player_y = NULL;
 
@@ -186,10 +193,12 @@ __declspec(naked) void player_codecave() {
     jmp player_return_address
   }
 }
-</code>
+
+```
 ### Loop Code Cave
 Our loop code cave will hook the location that is shared between the player and enemy methods for updating a position. When this code cave executes, ebx will store the Y position of the player or enemy and ebx - 4 will store the X position. Like the previous two code caves, we will assign pointers to these addresses:
-<code>
+```
+
 float* enemy_x = NULL;
 float* enemy_y = NULL;
 
@@ -205,10 +214,12 @@ __declspec(naked) void loop_codecave() {
     jmp loop_return_address
   }
 }
-</code>
+```
+
 ### Bot Thread
 With all of our pointers assigned, we can finally create the main logic of the bot. This thread will constantly check to see if all the pointers are assigned. If they are, the thread will then check to make sure that the character being updated is not the player. As a last check, we make sure that the “M” key is being held down so that our bot can be toggled:
-<code>
+
+```
 void injected_thread() {
   while (true) {
     if (player_x != NULL && player_y != NULL && enemy_x != NULL && enemy_y != NULL 
@@ -220,14 +231,16 @@ void injected_thread() {
     Sleep(1);
   }
 }
-</code>
+```
+
 If all these conditions are met, we know that an enemy is moving on the same screen as our player and we want to start moving our player toward the enemy. In this lesson, our bot will try to take a direct path to the enemy, as this is the easiest logic to implement. For a more complete farming bot, we would need to make sure to guide our player character around obstacles.
 
 Movement in Flare, like most ARPGs, is done by clicking in the direction you want to move. Our bot will move in four directions, based on the axes we discussed earlier:
 ![Flare axes,Flare Axes Image](img/flare_axes.png)
 
 Since we are taking a direct path, we can set the mouse cursor based on the enemy’s position relative to our player. For example, if the enemy is to the left of us, we will set our mouse cursor to the left of our player. The mouse position values can be retrieved by hovering the mouse over the highlighted positions above and viewing the value at the mouse address in the dump of x64dbg:
-<code>
+
+```
 if (*enemy_x < *player_x) {
   *mouse_x = 490;
 }
@@ -241,11 +254,14 @@ if (*enemy_y > *player_y) {
 else {
   *mouse_y = 330;
 }
-</code>
+```
+
 Finally, we will use the SendInput API to send a left mouse down event to the game. SendInput takes an array of input events, which allows you to send multiple events. This can be useful if we want to do multiple actions at once, such as attacking and then casting a spell. In this lesson, we will only send one input, which is the mouse down or mouse up event:
-<code>
+
+```
 input.type = INPUT_MOUSE;
 input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
 SendInput(1, &input, sizeof(INPUT));
-</code>
+```
+
 We can now build this DLL and inject it into our game. In game, move to a screen with an enemy and hold down the “M” key. Your character should run toward the enemy and attack when close enough.
