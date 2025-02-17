@@ -1,7 +1,7 @@
 /*
 Referenced in https://gamehacking.academy/lesson/4/4.
 
-A hack for Flare version 1.12 that will automatically move the player towards the nearest enemy and then attack until the enemy is dead.
+A bot for Flare version 1.12 that will automatically move the player towards the nearest enemy and then attack until the enemy is dead.
 
 It accomplishes this through a thread that constantly compares the current player's X and Y position to an enemy's position.
 Depending on the position, the mouse cursor is then set to a certain angle and SendInput is used to send a mouse down event to the game.
